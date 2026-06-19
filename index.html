@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DUEL — Skill-based 1v1 crypto games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#080A11;
+    --bg-2:#0B0E18;
+    --surface:#10141F;
+    --surface-2:#161B29;
+    --surface-3:#1C2234;
+    --border:#222A3D;
+    --border-soft:#1A2030;
+    --text:#EEF0F6;
+    --muted:#828BA3;
+    --muted-2:#5A6379;
+    --accent:#C6F94E;       /* money / win lime */
+    --accent-dim:#9FD22F;
+    --violet:#7B6CFF;       /* cool ambient / secondary */
+    --cyan:#3CE7E0;
+    --win:#2FD27E;
+    --danger:#FF5C77;
+    --radius:16px;
+    --radius-sm:11px;
+    --maxw:1180px;
+    --shadow:0 24px 60px -24px rgba(0,0,0,.7);
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+
+  /* ambient background */
+  .ambient{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+  .ambient::before,.ambient::after{
+    content:"";position:absolute;border-radius:50%;filter:blur(120px);opacity:.16;
+  }
+  .ambient::before{width:620px;height:620px;background:var(--violet);top:-220px;left:-160px}
+  .ambient::after{width:560px;height:560px;background:var(--accent);bottom:-260px;right:-160px;opacity:.10}
+  .grid-overlay{
+    position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.4;
+    background-image:linear-gradient(var(--border-soft) 1px,transparent 1px),linear-gradient(90deg,var(--border-soft) 1px,transparent 1px);
+    background-size:54px 54px;
+    mask-image:radial-gradient(circle at 50% 30%,rgba(0,0,0,.5),transparent 75%);
+    -webkit-mask-image:radial-gradient(circle at 50% 30%,rgba(0,0,0,.5),transparent 75%);
+  }
+
+  .wrap{position:relative;z-index:1;max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+  /* ===== header ===== */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(8,10,17,.72);
+    backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--border-soft);
+  }
+  .nav{display:flex;align-items:center;gap:32px;height:68px}
+  .logo{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--text)}
+  .logo-mark{
+    width:34px;height:34px;border-radius:9px;flex-shrink:0;
+    background:linear-gradient(135deg,var(--accent),var(--accent-dim));
+    display:grid;place-items:center;position:relative;
+    box-shadow:0 0 0 1px rgba(198,249,78,.3),0 8px 22px -8px rgba(198,249,78,.6);
+  }
+  .logo-mark svg{width:20px;height:20px}
+  .logo-text{font-family:'Sora',sans-serif;font-weight:800;font-size:20px;letter-spacing:-.02em}
+  .logo-text span{color:var(--muted-2);font-weight:500}
+
+  .nav-links{display:flex;gap:6px;margin-left:8px}
+  .nav-links a{
+    color:var(--muted);text-decoration:none;font-size:14px;font-weight:500;
+    padding:8px 13px;border-radius:9px;transition:.16s;
+  }
+  .nav-links a:hover{color:var(--text);background:var(--surface)}
+  .nav-links a.active{color:var(--text)}
+
+  .nav-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .balance-pill{
+    display:none;align-items:center;gap:8px;background:var(--surface);
+    border:1px solid var(--border);border-radius:10px;padding:7px 13px;font-size:13px;
+  }
+  .balance-pill .sol{font-family:'Space Mono',monospace;font-weight:700;color:var(--text)}
+  .balance-pill .label{color:var(--muted);font-size:11px}
+
+  .btn{
+    font-family:'Sora',sans-serif;font-weight:600;font-size:14px;
+    border:none;border-radius:11px;cursor:pointer;transition:.18s;
+    display:inline-flex;align-items:center;gap:9px;
+  }
+  .btn-wallet{
+    background:linear-gradient(135deg,var(--accent),var(--accent-dim));
+    color:#0A0D05;padding:11px 20px;
+    box-shadow:0 8px 24px -8px rgba(198,249,78,.55);
+  }
+  .btn-wallet:hover{transform:translateY(-1px);box-shadow:0 12px 30px -8px rgba(198,249,78,.7)}
+  .btn-wallet svg{width:16px;height:16px}
+  .btn-wallet.connected{
+    background:var(--surface-2);color:var(--text);border:1px solid var(--border);
+    box-shadow:none;padding:9px 14px;
+  }
+  .btn-wallet.connected .av{width:20px;height:20px;border-radius:6px;background:linear-gradient(135deg,var(--violet),var(--cyan))}
+  .btn-wallet.connected .addr{font-family:'Space Mono',monospace;font-size:13px}
+
+  .burger{display:none;background:none;border:1px solid var(--border);border-radius:9px;width:40px;height:40px;cursor:pointer;color:var(--text)}
+
+  /* ===== hero ===== */
+  .hero{padding:58px 0 34px;text-align:center;position:relative}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;
+    color:var(--accent);background:rgba(198,249,78,.08);border:1px solid rgba(198,249,78,.2);
+    padding:6px 14px;border-radius:100px;margin-bottom:24px;letter-spacing:.01em;
+  }
+  .eyebrow .pulse{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 1.8s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  h1{
+    font-family:'Sora',sans-serif;font-weight:800;letter-spacing:-.035em;line-height:1.02;
+    font-size:clamp(40px,6.4vw,76px);
+  }
+  h1 .grad{
+    background:linear-gradient(120deg,var(--accent),var(--cyan));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .hero p{
+    color:var(--muted);font-size:clamp(15px,1.7vw,18px);max-width:540px;margin:22px auto 0;
+  }
+
+  /* live stats strip */
+  .stats{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border-soft);
+    border:1px solid var(--border-soft);border-radius:var(--radius);overflow:hidden;
+    max-width:620px;margin:38px auto 0;
+  }
+  .stat{background:var(--bg-2);padding:20px 16px;text-align:center}
+  .stat .num{font-family:'Space Mono',monospace;font-weight:700;font-size:clamp(20px,3vw,28px);color:var(--text)}
+  .stat .num.lime{color:var(--accent)}
+  .stat .lab{color:var(--muted);font-size:12px;margin-top:4px;letter-spacing:.02em}
+
+  /* ===== games section ===== */
+  .games-section{padding:54px 0 80px}
+  .section-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:26px;gap:16px;flex-wrap:wrap}
+  .section-head h2{font-family:'Sora',sans-serif;font-weight:700;font-size:26px;letter-spacing:-.02em}
+  .section-head .sub{color:var(--muted);font-size:14px;margin-top:4px}
+  .filters{display:flex;gap:8px}
+  .chip{
+    font-size:13px;font-weight:500;color:var(--muted);background:var(--surface);
+    border:1px solid var(--border);border-radius:100px;padding:7px 15px;cursor:pointer;transition:.16s;
+  }
+  .chip:hover{color:var(--text);border-color:var(--muted-2)}
+  .chip.on{background:var(--accent);color:#0A0D05;border-color:var(--accent);font-weight:600}
+
+  .games{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+
+  .card{
+    position:relative;background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:.22s cubic-bezier(.2,.7,.3,1);
+    display:flex;flex-direction:column;
+  }
+  .card:hover{transform:translateY(-4px);border-color:var(--accent);box-shadow:0 20px 50px -20px rgba(198,249,78,.25)}
+  .card:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+  .card-art{
+    height:160px;position:relative;overflow:hidden;
+    display:grid;place-items:center;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .card-art .glow{position:absolute;inset:0;opacity:.5;transition:.3s}
+  .card:hover .card-art .glow{opacity:.85}
+  .card-art svg{position:relative;z-index:1;transition:transform .3s}
+  .card:hover .card-art svg{transform:scale(1.06)}
+
+  .live-badge{
+    position:absolute;top:12px;left:12px;z-index:2;
+    display:inline-flex;align-items:center;gap:6px;
+    background:rgba(8,10,17,.78);backdrop-filter:blur(6px);
+    border:1px solid var(--border);border-radius:100px;padding:4px 10px;
+    font-size:11px;font-weight:600;color:var(--text);
+  }
+  .live-badge .d{width:5px;height:5px;border-radius:50%;background:var(--win);box-shadow:0 0 7px var(--win);animation:pulse 1.6s infinite}
+
+  .play-overlay{
+    position:absolute;inset:0;z-index:3;display:grid;place-items:center;
+    background:rgba(8,10,17,.55);backdrop-filter:blur(2px);
+    opacity:0;transition:.22s;
+  }
+  .card:hover .play-overlay{opacity:1}
+  .play-btn{
+    background:var(--accent);color:#0A0D05;font-family:'Sora',sans-serif;font-weight:700;
+    font-size:14px;padding:11px 22px;border-radius:100px;
+    display:inline-flex;align-items:center;gap:8px;box-shadow:0 8px 24px -6px rgba(198,249,78,.6);
+    transform:translateY(6px);transition:.22s;
+  }
+  .card:hover .play-btn{transform:translateY(0)}
+  .play-btn svg{width:15px;height:15px}
+
+  .card-body{padding:16px 17px 17px;display:flex;flex-direction:column;gap:13px;flex:1}
+  .card-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .card-name{font-family:'Sora',sans-serif;font-weight:600;font-size:16.5px}
+  .card-tag{font-size:11px;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);padding:3px 8px;border-radius:6px;font-weight:500}
+  .card-meta{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:13px;border-top:1px solid var(--border-soft)}
+  .meta-item{display:flex;flex-direction:column;gap:2px}
+  .meta-item .k{font-size:10.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.05em}
+  .meta-item .v{font-family:'Space Mono',monospace;font-size:13.5px;font-weight:700;color:var(--text)}
+  .meta-item .v.lime{color:var(--accent)}
+  .meta-item.right{text-align:right;align-items:flex-end}
+
+  /* ===== how it works ===== */
+  .how{padding:0 0 80px}
+  .how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .how-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:26px 22px}
+  .how-num{font-family:'Space Mono',monospace;font-size:13px;color:var(--accent);font-weight:700;margin-bottom:14px}
+  .how-card h3{font-family:'Sora',sans-serif;font-weight:600;font-size:18px;margin-bottom:8px}
+  .how-card p{color:var(--muted);font-size:14px;line-height:1.6}
+
+  /* ===== footer ===== */
+  footer{border-top:1px solid var(--border-soft);padding:40px 0;background:var(--bg-2)}
+  .foot{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  .foot .left{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px}
+  .foot a{color:var(--muted);text-decoration:none;font-size:13px;transition:.16s}
+  .foot a:hover{color:var(--text)}
+  .foot .links{display:flex;gap:20px;flex-wrap:wrap}
+  .disclaimer{margin-top:18px;color:var(--muted-2);font-size:11.5px;max-width:640px;line-height:1.6}
+
+  /* ===== modal ===== */
+  .overlay{
+    position:fixed;inset:0;z-index:200;background:rgba(4,6,12,.78);
+    backdrop-filter:blur(6px);display:none;place-items:center;padding:24px;
+  }
+  .overlay.open{display:grid;animation:fade .2s}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .modal{
+    background:var(--surface);border:1px solid var(--border);border-radius:20px;
+    width:100%;max-width:400px;box-shadow:var(--shadow);overflow:hidden;
+    animation:pop .25s cubic-bezier(.2,.8,.3,1);
+  }
+  @keyframes pop{from{transform:scale(.94) translateY(10px);opacity:0}to{transform:scale(1);opacity:1}}
+  .modal-head{padding:22px 22px 0;display:flex;align-items:flex-start;justify-content:space-between}
+  .modal-icon{
+    width:48px;height:48px;border-radius:13px;display:grid;place-items:center;margin-bottom:16px;
+    background:rgba(198,249,78,.1);border:1px solid rgba(198,249,78,.22);
+  }
+  .modal-icon svg{width:24px;height:24px}
+  .modal-x{background:var(--surface-2);border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:9px;cursor:pointer;display:grid;place-items:center;transition:.16s}
+  .modal-x:hover{color:var(--text);border-color:var(--muted-2)}
+  .modal-body{padding:0 22px 22px}
+  .modal-body h3{font-family:'Sora',sans-serif;font-weight:700;font-size:21px;letter-spacing:-.01em}
+  .modal-body .game-label{color:var(--accent);font-weight:600;font-size:13px;margin-top:2px}
+  .modal-body p{color:var(--muted);font-size:14px;margin-top:10px;line-height:1.6}
+
+  .wallet-list{display:flex;flex-direction:column;gap:9px;margin-top:18px}
+  .wallet-opt{
+    display:flex;align-items:center;gap:13px;width:100%;text-align:left;
+    background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
+    padding:13px 15px;cursor:pointer;transition:.16s;color:var(--text);
+    font-family:'Inter',sans-serif;font-size:15px;font-weight:500;
+  }
+  .wallet-opt:hover{border-color:var(--accent);background:var(--surface-3)}
+  .wallet-opt .wi{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;flex-shrink:0;font-size:18px}
+  .wallet-opt .tag{margin-left:auto;font-size:11px;color:var(--muted);background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:6px}
+  .wallet-opt .spin{margin-left:auto;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:rot .7s linear infinite;display:none}
+  .wallet-opt.loading .spin{display:block}
+  .wallet-opt.loading .tag{display:none}
+  @keyframes rot{to{transform:rotate(360deg)}}
+
+  .modal-cta{
+    width:100%;justify-content:center;margin-top:18px;padding:13px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-dim));color:#0A0D05;
+    box-shadow:0 8px 24px -8px rgba(198,249,78,.5);
+  }
+  .modal-cta:hover{transform:translateY(-1px)}
+  .modal-foot-note{text-align:center;color:var(--muted-2);font-size:12px;margin-top:14px}
+
+  /* match-finding state */
+  .finding{text-align:center;padding:8px 0 4px}
+  .finding .ring{width:64px;height:64px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;margin:6px auto 18px;animation:rot 1s linear infinite}
+  .finding h3{font-family:'Sora',sans-serif;font-weight:700;font-size:20px}
+  .finding p{color:var(--muted);font-size:14px;margin-top:8px}
+
+  /* toast */
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
+    padding:13px 18px;font-size:14px;z-index:300;display:flex;align-items:center;gap:10px;
+    box-shadow:var(--shadow);opacity:0;transition:.28s;pointer-events:none;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast .ic{width:8px;height:8px;border-radius:50%;background:var(--win);box-shadow:0 0 8px var(--win)}
+
+  /* responsive */
+  @media(max-width:880px){
+    .games,.how-grid{grid-template-columns:repeat(2,1fr)}
+    .nav-links{display:none}
+  }
+  @media(max-width:560px){
+    .wrap{padding:0 16px}
+    .games,.how-grid,.stats{grid-template-columns:1fr}
+    .stats{max-width:280px}
+    .filters{display:none}
+    .balance-pill{display:none!important}
+    .hero{padding:42px 0 24px}
+    .nav{gap:14px}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  }
+</style>
+</head>
+<body>
+<div class="ambient"></div>
+<div class="grid-overlay"></div>
+
+<!-- header -->
+<header>
+  <div class="wrap">
+    <nav class="nav">
+      <a href="#" class="logo" aria-label="DUEL home">
+        <span class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 4l7 7-7 9M20 4l-7 7 7 9" stroke="#0A0D05" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="logo-text">DUEL<span>.fun</span></span>
+      </a>
+      <div class="nav-links">
+        <a href="#games" class="active">Games</a>
+        <a href="#how">How it works</a>
+        <a href="#">Leaderboard</a>
+        <a href="#">Rewards</a>
+      </div>
+      <div class="nav-right">
+        <div class="balance-pill" id="balancePill">
+          <span class="sol">12.40</span><span class="label">SOL</span>
+        </div>
+        <button class="btn btn-wallet" id="walletBtn" onclick="openWalletModal()">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 012-2h12a2 2 0 012 2v1h1a1 1 0 011 1v6a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.8"/><circle cx="16.5" cy="12" r="1.3" fill="currentColor"/></svg>
+          <span id="walletBtnText">Connect Wallet</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<!-- hero -->
+<section class="wrap hero">
+  <span class="eyebrow"><span class="pulse"></span>4 players online now</span>
+  <h1>Win or lose,<br><span class="grad">it's 1v1.</span></h1>
+  <p>Stake SOL, get matched against a real opponent, and play skill-based mini games. Winner takes the pot. No house, no bots. <p> CA: XXXXXXXXXXXXXXXXX </p></p>
+  <div class="stats">
+    <div class="stat"><div class="num lime">18.4 SOL</div><div class="lab">Wagered (24h)</div></div>
+    <div class="stat"><div class="num">2</div><div class="lab">Live matches</div></div>
+    <div class="stat"><div class="num">97.5%</div><div class="lab">Payout to winners</div></div>
+  </div>
+</section>
+
+<!-- games -->
+<section class="wrap games-section" id="games">
+  <div class="section-head">
+    <div>
+      <h2>Pick your game</h2>
+      <div class="sub">Choose a game, set your stake, find a match.</div>
+    </div>
+    <div class="filters">
+      <button class="chip on">All</button>
+      <button class="chip">Board</button>
+      <button class="chip">Cards</button>
+    </div>
+  </div>
+  <div class="games" id="gameGrid"></div>
+</section>
+
+<!-- how it works -->
+<section class="wrap how" id="how">
+  <div class="section-head"><div><h2>How it works</h2><div class="sub">Three steps from wallet to winnings.</div></div></div>
+  <div class="how-grid">
+    <div class="how-card">
+      <div class="how-num">STEP 01</div>
+      <h3>Connect &amp; stake</h3>
+      <p>Link your Solana wallet and choose how much SOL you want to put on the line. Your stake is escrowed for the match.</p>
+    </div>
+    <div class="how-card">
+      <div class="how-num">STEP 02</div>
+      <h3>Get matched</h3>
+      <p>We pair you with a real opponent at the same stake. No bots, no house edge — just two players, head to head.</p>
+    </div>
+    <div class="how-card">
+      <div class="how-num">STEP 03</div>
+      <h3>Winner takes the pot</h3>
+      <p>Win the game, win the pot. Payouts settle straight back to your wallet the moment the match ends.</p>
+    </div>
+  </div>
+</section>
+
+<!-- footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <div class="left">
+        <span class="logo-mark" style="width:26px;height:26px;border-radius:7px">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 4l7 7-7 9M20 4l-7 7 7 9" stroke="#0A0D05" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span>© 2026 DUEL.gg — Skill-based 1v1 gaming.</span>
+      </div>
+      <div class="links">
+        <a href="#">Terms</a><a href="#">Privacy</a><a href="#">Provably fair</a><a href="#">Support</a><a href="#">Discord</a>
+      </div>
+    </div>
+    <p class="disclaimer">DUEL is a skill-based competitive gaming platform. Players are matched 1v1 with equal stakes. Play responsibly — never wager more than you can afford to lose. Demo interface for preview purposes only.</p>
+  </div>
+</footer>
+
+<!-- ===== modal ===== -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal" role="dialog" aria-modal="true"></div>
+</div>
+
+<!-- toast -->
+<div class="toast" id="toast"><span class="ic"></span><span id="toastText"></span></div>
+
+<script>
+/* ---------- state ---------- */
+let connected = false;
+let walletAddr = "";
+
+/* ---------- game data ---------- */
+const games = [
+  {
+    id:"connect4", name:"Connect Four", tag:"Board",
+    players:3, stake:"0.10", pot:"0.19",
+    glow:"radial-gradient(circle at 50% 40%,rgba(123,108,255,.35),transparent 70%)",
+    art:`<svg width="118" height="118" viewBox="0 0 118 118" fill="none">
+      <rect x="9" y="14" width="100" height="92" rx="12" fill="#1B2236" stroke="#2A3350" stroke-width="1.5"/>
+      ${[0,1,2,3].map(r=>[0,1,2,3].map(c=>{
+        const cx=23+c*24, cy=28+r*22;
+        let fill="#0E1320";
+        if((r===3&&c===0)||(r===2&&c===1)||(r===1&&c===2))fill="#C6F94E";
+        if((r===3&&c===1)||(r===3&&c===2)||(r===2&&c===2))fill="#FF5C77";
+        return `<circle cx="${cx}" cy="${cy}" r="8.5" fill="${fill}"/>`;
+      }).join("")).join("")}
+    </svg>`
+  },
+  {
+    id:"chess", name:"Chess", tag:"Board",
+    players:2, stake:"0.25", pot:"0.49",
+    glow:"radial-gradient(circle at 50% 40%,rgba(60,231,224,.28),transparent 70%)",
+    art:`<svg width="116" height="116" viewBox="0 0 116 116" fill="none">
+      <g transform="translate(20,18)">
+        ${[0,1,2,3].map(r=>[0,1,2,3].map(c=>`<rect x="${c*19}" y="${r*19}" width="19" height="19" fill="${(r+c)%2?'#1B2236':'#2A3350'}"/>`).join("")).join("")}
+      </g>
+      <path d="M58 30c-7 0-12 5-12 12 0 4 2 7 5 9l-4 18h22l-4-18c3-2 5-5 5-9 0-7-5-12-12-12z" fill="#C6F94E"/>
+      <circle cx="58" cy="38" r="3.4" fill="#0A0D05"/>
+      <rect x="42" y="74" width="32" height="6" rx="2" fill="#9FD22F"/>
+    </svg>`
+  },
+  {
+    id:"tictactoe", name:"Tic-Tac-Toe", tag:"Board",
+    players:2, stake:"0.05", pot:"0.095",
+    glow:"radial-gradient(circle at 50% 40%,rgba(198,249,78,.22),transparent 70%)",
+    art:`<svg width="112" height="112" viewBox="0 0 112 112" fill="none">
+      <g stroke="#2A3350" stroke-width="3" stroke-linecap="round">
+        <line x1="44" y1="20" x2="44" y2="92"/><line x1="68" y1="20" x2="68" y2="92"/>
+        <line x1="20" y1="44" x2="92" y2="44"/><line x1="20" y1="68" x2="92" y2="68"/>
+      </g>
+      <g stroke="#C6F94E" stroke-width="4.5" stroke-linecap="round">
+        <line x1="26" y1="26" x2="38" y2="38"/><line x1="38" y1="26" x2="26" y2="38"/>
+        <line x1="74" y1="74" x2="86" y2="86"/><line x1="86" y1="74" x2="74" y2="86"/>
+      </g>
+      <circle cx="56" cy="56" r="8" stroke="#FF5C77" stroke-width="4.5" fill="none"/>
+      <circle cx="32" cy="80" r="8" stroke="#FF5C77" stroke-width="4.5" fill="none"/>
+    </svg>`
+  },
+  {
+    id:"higherlower", name:"Higher / Lower", tag:"Cards",
+    players:3, stake:"0.20", pot:"0.39",
+    glow:"radial-gradient(circle at 50% 40%,rgba(255,92,119,.26),transparent 70%)",
+    art:`<svg width="118" height="116" viewBox="0 0 118 116" fill="none">
+      <g transform="rotate(-9 40 60)">
+        <rect x="20" y="32" width="44" height="60" rx="7" fill="#161B29" stroke="#2A3350" stroke-width="1.5"/>
+        <text x="28" y="50" font-family="Space Mono,monospace" font-size="15" font-weight="700" fill="#FF5C77">K</text>
+        <path d="M42 58c-4-5-11-3-11 3 0 5 11 11 11 11s11-6 11-11c0-6-7-8-11-3z" fill="#FF5C77"/>
+      </g>
+      <g transform="rotate(9 78 60)">
+        <rect x="54" y="32" width="44" height="60" rx="7" fill="#1B2236" stroke="#C6F94E" stroke-width="1.5"/>
+        <text x="62" y="50" font-family="Space Mono,monospace" font-size="15" font-weight="700" fill="#C6F94E">?</text>
+        <path d="M76 56l11 14H65z" fill="#C6F94E"/>
+      </g>
+    </svg>`
+  },
+  {
+    id:"battleship", name:"Battleship", tag:"Board",
+    players:1, stake:"0.15", pot:"0.29",
+    glow:"radial-gradient(circle at 50% 40%,rgba(60,231,224,.24),transparent 70%)",
+    art:`<svg width="116" height="116" viewBox="0 0 116 116" fill="none">
+      <rect x="16" y="16" width="84" height="84" rx="10" fill="#0E1320" stroke="#2A3350" stroke-width="1.5"/>
+      <g stroke="#1F2740" stroke-width="1">
+        ${[1,2,3,4].map(i=>`<line x1="${16+i*16.8}" y1="16" x2="${16+i*16.8}" y2="100"/><line x1="16" y1="${16+i*16.8}" x2="100" y2="${16+i*16.8}"/>`).join("")}
+      </g>
+      <rect x="20" y="36" width="48" height="13" rx="6" fill="#3CE7E0" opacity=".85"/>
+      <rect x="52" y="68" width="13" height="28" rx="6" fill="#7B6CFF" opacity=".7"/>
+      <circle cx="42" cy="80" r="5" fill="#FF5C77"/>
+      <path d="M55 28l8 8M63 28l-8 8" stroke="#C6F94E" stroke-width="3" stroke-linecap="round"/>
+    </svg>`
+  },
+  {
+    id:"coinflip", name:"Coin Flip", tag:"Cards",
+    players:4, stake:"0.50", pot:"0.97",
+    glow:"radial-gradient(circle at 50% 40%,rgba(198,249,78,.3),transparent 70%)",
+    art:`<svg width="112" height="112" viewBox="0 0 112 112" fill="none">
+      <ellipse cx="56" cy="58" rx="36" ry="36" fill="#1B2236" stroke="#C6F94E" stroke-width="2"/>
+      <ellipse cx="56" cy="54" rx="36" ry="34" fill="url(#cg)" stroke="#C6F94E" stroke-width="2.5"/>
+      <defs><linearGradient id="cg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C6F94E"/><stop offset="1" stop-color="#9FD22F"/></linearGradient></defs>
+      <path d="M56 36l7 7-7 7-7-7z" fill="#0A0D05"/>
+      <path d="M48 56h16M48 64h16" stroke="#0A0D05" stroke-width="3" stroke-linecap="round"/>
+    </svg>`
+  }
+];
+
+/* ---------- render game cards ---------- */
+function renderGames(){
+  const grid = document.getElementById("gameGrid");
+  grid.innerHTML = games.map(g=>`
+    <div class="card" tabindex="0" role="button" aria-label="Play ${g.name}"
+         onclick="onGameClick('${g.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();onGameClick('${g.id}')}">
+      <div class="card-art">
+        <div class="glow" style="background:${g.glow}"></div>
+        <div class="live-badge"><span class="d"></span>${g.players} live</div>
+        ${g.art}
+        <div class="play-overlay">
+          <span class="play-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            Play now
+          </span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-title-row">
+          <span class="card-name">${g.name}</span>
+          <span class="card-tag">${g.tag}</span>
+        </div>
+        <div class="card-meta">
+          <div class="meta-item">
+            <span class="k">Min stake</span>
+            <span class="v">${g.stake} SOL</span>
+          </div>
+          <div class="meta-item right">
+            <span class="k">Winner takes</span>
+            <span class="v lime">${g.pot} SOL</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+/* ---------- game click ---------- */
+function onGameClick(id){
+  const g = games.find(x=>x.id===id);
+  if(!connected){
+    openConnectGate(g);
+  }else{
+    openMatchFinding(g);
+  }
+}
+
+/* ---------- modals ---------- */
+const overlay = document.getElementById("overlay");
+const modal = document.getElementById("modal");
+
+function openModal(html){ modal.innerHTML=html; overlay.classList.add("open"); }
+function closeModal(){ overlay.classList.remove("open"); }
+
+const xIcon = `<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+
+/* wallet connect modal (also opened from header) */
+function openWalletModal(){
+  if(connected){ openAccountModal(); return; }
+  openModal(`
+    <div class="modal-head">
+      <div></div>
+      <button class="modal-x" onclick="closeModal()">${xIcon}</button>
+    </div>
+    <div class="modal-body" style="padding-top:0">
+      <div class="modal-icon">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 012-2h12a2 2 0 012 2v1h1a1 1 0 011 1v6a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="#C6F94E" stroke-width="1.7"/><circle cx="16.5" cy="12" r="1.3" fill="#C6F94E"/></svg>
+      </div>
+      <h3>Connect your wallet</h3>
+      <p>Choose a wallet to start playing. Your stake stays in your control until a match begins.</p>
+      <div class="wallet-list">
+        ${walletOpt("phantom","Phantom","👻","#AB9FF2","Detected")}
+        ${walletOpt("solflare","Solflare","🔆","#FC8E2A","")}
+        ${walletOpt("backpack","Backpack","🎒","#E33E3F","")}
+        ${walletOpt("walletconnect","WalletConnect","🔗","#3B99FC","")}
+      </div>
+      <p class="modal-foot-note">New to Solana wallets? Phantom is a good place to start.</p>
+    </div>
+  `);
+}
+function walletOpt(id,name,emoji,color,tag){
+  return `<button class="wallet-opt" id="w-${id}" onclick="fakeConnect('${id}','${name}')">
+    <span class="wi" style="background:${color}22;border:1px solid ${color}44">${emoji}</span>
+    ${name}
+    ${tag?`<span class="tag">${tag}</span>`:`<span class="tag" style="opacity:.5">Install</span>`}
+    <span class="spin"></span>
+  </button>`;
+}
+
+/* fake connect flow */
+function fakeConnect(id,name){
+  const btn = document.getElementById("w-"+id);
+  btn.classList.add("loading");
+  setTimeout(()=>{
+    connected = true;
+    walletAddr = "7xKp" + "…" + "9fQr";
+    // update header
+    const wb = document.getElementById("walletBtn");
+    wb.classList.add("connected");
+    wb.innerHTML = `<span class="av"></span><span class="addr">${walletAddr}</span>`;
+    wb.setAttribute("onclick","openAccountModal()");
+    document.getElementById("balancePill").style.display="flex";
+    closeModal();
+    showToast(`${name} connected`);
+  },1100);
+}
+
+/* connect gate (when clicking a game while disconnected) */
+function openConnectGate(g){
+  openModal(`
+    <div class="modal-head">
+      <div></div>
+      <button class="modal-x" onclick="closeModal()">${xIcon}</button>
+    </div>
+    <div class="modal-body" style="padding-top:0">
+      <div class="modal-icon">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l3 6 6 1-4.5 4 1 6-5.5-3-5.5 3 1-6L3 9l6-1z" stroke="#C6F94E" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      </div>
+      <h3>Connect to play</h3>
+      <div class="game-label">${g.name} · ${g.stake} SOL min</div>
+      <p>You need to connect a wallet before you can join a match. It only takes a second.</p>
+      <button class="btn modal-cta" onclick="openWalletModal()">
+        <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M3 7a2 2 0 012-2h12a2 2 0 012 2v1h1a1 1 0 011 1v6a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.8"/><circle cx="16.5" cy="12" r="1.3" fill="currentColor"/></svg>
+        Connect Wallet
+      </button>
+    </div>
+  `);
+}
+
+/* match finding (connected state) */
+function openMatchFinding(g){
+  openModal(`
+    <div class="modal-head">
+      <div></div>
+      <button class="modal-x" onclick="closeModal()">${xIcon}</button>
+    </div>
+    <div class="modal-body" style="padding-top:0">
+      <div class="finding">
+        <div class="ring"></div>
+        <h3>Finding an opponent…</h3>
+        <p>${g.name} · staking ${g.stake} SOL · winner takes ${g.pot} SOL</p>
+      </div>
+    </div>
+  `);
+}
+
+/* account modal */
+function openAccountModal(){
+  openModal(`
+    <div class="modal-head">
+      <div></div>
+      <button class="modal-x" onclick="closeModal()">${xIcon}</button>
+    </div>
+    <div class="modal-body" style="padding-top:0">
+      <div class="modal-icon" style="background:linear-gradient(135deg,#7B6CFF22,#3CE7E022);border-color:#7B6CFF44">
+        <span style="width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#7B6CFF,#3CE7E0);display:block"></span>
+      </div>
+      <h3>Your wallet</h3>
+      <div class="game-label" style="font-family:'Space Mono',monospace">${walletAddr}</div>
+      <p>Balance: <strong style="color:var(--text);font-family:'Space Mono',monospace">12.40 SOL</strong></p>
+      <button class="btn modal-cta" style="background:var(--surface-2);color:var(--text);border:1px solid var(--border);box-shadow:none" onclick="disconnect()">Disconnect</button>
+    </div>
+  `);
+}
+function disconnect(){
+  connected=false; walletAddr="";
+  const wb=document.getElementById("walletBtn");
+  wb.classList.remove("connected");
+  wb.innerHTML=`<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M3 7a2 2 0 012-2h12a2 2 0 012 2v1h1a1 1 0 011 1v6a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.8"/><circle cx="16.5" cy="12" r="1.3" fill="currentColor"/></svg><span id="walletBtnText">Connect Wallet</span>`;
+  wb.setAttribute("onclick","openWalletModal()");
+  document.getElementById("balancePill").style.display="none";
+  closeModal();
+  showToast("Wallet disconnected");
+}
+
+/* toast */
+let toastTimer;
+function showToast(msg){
+  const t=document.getElementById("toast");
+  document.getElementById("toastText").textContent=msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove("show"),2600);
+}
+
+/* esc to close */
+document.addEventListener("keydown",e=>{ if(e.key==="Escape")closeModal(); });
+
+/* chip filter (visual only) */
+document.addEventListener("click",e=>{
+  if(e.target.classList.contains("chip")){
+    document.querySelectorAll(".chip").forEach(c=>c.classList.remove("on"));
+    e.target.classList.add("on");
+  }
+});
+
+/* init */
+renderGames();
+</script>
+</body>
+</html>
